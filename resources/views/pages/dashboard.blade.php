@@ -139,8 +139,8 @@
             <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
-                        <th>Jumlah</th>
+                        <th>Date</th>
+                        <th>Amount</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -157,7 +157,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="4" class="text-center">Tidak ada data transaksi yang dibayar.</td>
+                        <td colspan="4" class="text-center">There is no transaction data with a paid status.</td>
                     </tr>
                     @endforelse
                 </tbody>
