@@ -19,7 +19,7 @@ class TransactionController extends Controller
 
             if (!$customerId) {
 
-                return redirect()->route('login')->with('error', 'Silakan login untuk melihat riwayat transaksi.');
+                return redirect()->route('login')->with('error', 'Please log in to make a new transaction.');
             }
             
             $transactions = Transaction::where('customer_id', $customerId) // Filter berdasarkan customer_id
@@ -31,7 +31,7 @@ class TransactionController extends Controller
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error fetching transactions: ' . $e->getMessage());
             return view('pages.transaction.index')
-                ->with('error', 'Terjadi kesalahan saat memuat riwayat transaksi. Silakan coba lagi nanti.')
+                ->with('error', 'There was an error loading transaction history. Please try again later.')
                 ->with('transactions', collect([])); // Kirim koleksi kosong agar tidak undefined
         }
     }
@@ -40,7 +40,7 @@ class TransactionController extends Controller
     {
         // Pastikan user sudah login untuk membuat transaksi
         if (!Auth::check()) {
-            return redirect()->route('login')->with('error', 'Silakan login untuk membuat transaksi baru.');
+            return redirect()->route('login')->with('error', 'Please log in to view your transaction history.');
         }
         $paymentMethods = ['E-Wallet', 'Virtual Account'];
         return view('pages.transaction.create', compact('paymentMethods'));
@@ -50,7 +50,7 @@ class TransactionController extends Controller
     {
         // Pastikan user sudah login
         if (!Auth::check()) {
-            return redirect()->route('login')->with('error', 'Sesi Anda telah berakhir. Silakan login kembali.');
+            return redirect()->route('login')->with('error', 'Your session has expired. Please log in again.');
         }
 
         $validatedData = $request->validate([
@@ -94,7 +94,7 @@ class TransactionController extends Controller
             $transaction->save();
 
             $redirect = redirect()->route('transactions.show', $transaction->transaction_id)
-                ->with('success', 'Transaksi berhasil dibuat. Status: Menunggu Pembayaran. Silakan selesaikan pembayaran Anda.');
+                ->with('success', 'Your transaction was created successfully. Status: Awaiting Payment. Please complete your payment.');
 
             if ($qrCodeData) {
                 $redirect->with('qrCodeData', $qrCodeData); // Pass base64 encoded QR code
@@ -104,7 +104,7 @@ class TransactionController extends Controller
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error storing transaction: ' . $e->getMessage());
             return redirect()->route('transactions.create')
-                ->with('error', 'Gagal membuat transaksi: ' . $e->getMessage())
+                ->with('error', 'Failed to create transaction: ' . $e->getMessage())
                 ->withInput();
         }
     }
@@ -131,11 +131,11 @@ class TransactionController extends Controller
             return view('pages.transaction.show', compact('transaction', 'qrCodeData'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return redirect()->route('transactions.index')
-                ->with('error', 'Transaksi tidak ditemukan atau Anda tidak memiliki akses.');
+                ->with('error', 'Transaction not found or you do not have access.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error showing transaction ' . $id . ': ' . $e->getMessage());
             return redirect()->route('transactions.index')
-                ->with('error', 'Terjadi kesalahan saat menampilkan detail transaksi.');
+                ->with('error', 'There was an error displaying the transaction details.');
         }
     }
 
@@ -179,23 +179,23 @@ class TransactionController extends Controller
             }
 
             return redirect()->route('transactions.show', $transaction->transaction_id)
-                ->with('success', 'Status transaksi berhasil diupdate.');
+                ->with('success', 'Transaction status updated successfully.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+                return response()->json(['success' => false, 'message' => 'Transaction not found.'], 404);
             }
-            return redirect()->route('transactions.index')->with('error', 'Transaksi tidak ditemukan.');
+            return redirect()->route('transactions.index')->with('error', 'Transaction not found.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error updating transaction status ' . $id . ': ' . $e->getMessage());
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal update status: Terjadi kesalahan pada server.'
+                    'message' => 'Failed to update status: An error occurred on the server.'
                 ], 500);
             }
 
-            return redirect()->route('transactions.index') // Atau kembali ke halaman sebelumnya jika memungkinkan
-                ->with('error', 'Gagal update status: Terjadi kesalahan pada server.');
+            return redirect()->route('transactions.index')
+                ->with('error', 'Failed to update status: An error occurred on the server.');
         }
     }
 
