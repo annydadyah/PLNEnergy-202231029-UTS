@@ -11,34 +11,17 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode; // Import QrCode Facade
 
 class TransactionController extends Controller
 {
-    // Anda sebaiknya menggunakan middleware auth di sini jika halaman ini
-    // hanya untuk pengguna yang sudah login.
-    // public function __construct()
-    // {
-    //     $this->middleware('auth');
-    // }
 
     public function index()
     {
         try {
-            // Ambil customer_id dari user yang sedang login
-            // Jika halaman ini bisa diakses oleh admin yang melihat semua transaksi,
-            // maka logika pengambilan customer_id perlu disesuaikan.
-            // Untuk saat ini, kita asumsikan ini untuk user yang sedang login.
             $customerId = Auth::id();
 
             if (!$customerId) {
-                // Jika tidak ada user yang login, dan halaman ini butuh user
-                // redirect ke login atau tampilkan error.
-                // Atau jika ini halaman admin, logika akan berbeda.
-                // Untuk contoh ini, kita akan mengembalikan koleksi kosong jika tidak ada user.
-                // Sebaiknya redirect ke login.
+
                 return redirect()->route('login')->with('error', 'Silakan login untuk melihat riwayat transaksi.');
             }
-
-            // ---- PERBAIKAN UTAMA ADA DI SINI ----
-            // Ambil SEMUA transaksi milik customer tersebut, diurutkan berdasarkan tanggal.
-            // Hapus ->paginate(10) dan ganti dengan ->get()
+            
             $transactions = Transaction::where('customer_id', $customerId) // Filter berdasarkan customer_id
                 ->orderBy('transaction_date', 'desc')
                 ->get();
@@ -46,8 +29,6 @@ class TransactionController extends Controller
 
             return view('pages.transaction.index', compact('transactions'));
         } catch (\Exception $e) {
-            // Tangkap error dan tampilkan pesan yang jelas
-            // Juga log errornya untuk debugging di server
             \Illuminate\Support\Facades\Log::error('Error fetching transactions: ' . $e->getMessage());
             return view('pages.transaction.index')
                 ->with('error', 'Terjadi kesalahan saat memuat riwayat transaksi. Silakan coba lagi nanti.')
@@ -112,8 +93,6 @@ class TransactionController extends Controller
 
             $transaction->save();
 
-            // Redirect ke halaman show, agar user bisa melihat QR Code atau VA Number
-            // Kita akan pass QR code (jika ada) melalui session flash
             $redirect = redirect()->route('transactions.show', $transaction->transaction_id)
                 ->with('success', 'Transaksi berhasil dibuat. Status: Menunggu Pembayaran. Silakan selesaikan pembayaran Anda.');
 
@@ -134,15 +113,12 @@ class TransactionController extends Controller
     public function show($id)
     {
         try {
-            // Pastikan user hanya bisa melihat transaksinya sendiri, kecuali admin
             $transaction = Transaction::where('transaction_id', $id)
                 ->where('customer_id', Auth::id()) // Filter berdasarkan customer_id
-                ->firstOrFail(); // Gunakan firstOrFail untuk otomatis 404 jika tidak ditemukan atau bukan milik user
-
-            // Jika ada qrCodeData di session (dari proses store), pass ke view
+                ->firstOrFail(); 
+            
             $qrCodeData = session('qrCodeData');
 
-            // Jika tidak ada QR code data di session tetapi ini metode E-Wallet, coba generate ulang
             if (!$qrCodeData && $transaction->payment_method === 'E-Wallet' && $transaction->payment_code) {
                 try {
                     $qrCodeData = base64_encode(QrCode::format('svg')->size(200)->generate($transaction->payment_code));
@@ -165,18 +141,14 @@ class TransactionController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        // Sebaiknya operasi ini hanya bisa dilakukan oleh admin atau sistem pembayaran
-        // Untuk contoh, kita tidak membatasi siapa yang bisa update, tapi dalam produksi ini perlu perhatian
+        
         $request->validate([
             'status' => 'required|in:owing,paid,failed,success',
         ]);
 
         try {
-            // Idealnya, admin tidak perlu filter customer_id, tapi jika user bisa update status sendiri, maka perlu:
-            // $transaction = Transaction::where('transaction_id', $id)
-            //                          ->where('customer_id', Auth::id())
-            //                          ->firstOrFail();
-            $transaction = Transaction::findOrFail($id); // Untuk admin atau sistem callback
+
+            $transaction = Transaction::findOrFail($id); 
 
             $oldStatus = $transaction->status;
             $newStatus = $request->status;
@@ -192,10 +164,6 @@ class TransactionController extends Controller
                     $transaction->generated_token = $this->generateNumericToken(20);
                 }
 
-                // Jika status diubah kembali dari paid/success ke owing/failed, mungkin token perlu di-null kan? Tergantung logika bisnis.
-                // if (in_array($newStatus, ['owing', 'failed']) && in_array($oldStatus, ['paid', 'success'])) {
-                //     $transaction->generated_token = null;
-                // }
 
                 $transaction->save();
             }
